@@ -231,6 +231,7 @@
                                         "sagemaker:Describe*",
                                         "sagemaker:DeleteModel",
                                         "sagemaker:Get*",
+                                        "sagemaker:List*",
                                         "sagemaker:Search",
                                         "sagemaker:DeleteTags",
                                         "sagemaker:StopTrainingJob",
