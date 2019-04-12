@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "Cloud Academy Compliance check using AWS Config Rules (Managed & Custom)",
+    "Description": "Forecast flight delays with Amazon Sagemaker",
     "Parameters": {
         "Region": {
             "Type": "String",
