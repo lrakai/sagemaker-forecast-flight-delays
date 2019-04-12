@@ -289,31 +289,31 @@
                     }
                 ]
             }
-        }
-    },
-    "User": {
-        "Type": "AWS::IAM::User",
-        "DependsOn": "Group",
-        "Properties": {
-            "LoginProfile": {
-                "Password": {
+        },
+        "User": {
+            "Type": "AWS::IAM::User",
+            "DependsOn": "Group",
+            "Properties": {
+                "LoginProfile": {
+                    "Password": {
+                        "Fn::FindInMap": [
+                            "UserConfig",
+                            "Login",
+                            "Pass"
+                        ]
+                    }
+                },
+                "Path": "/",
+                "Groups": [
+                    "Students"
+                ],
+                "UserName": {
                     "Fn::FindInMap": [
                         "UserConfig",
                         "Login",
-                        "Pass"
+                        "Name"
                     ]
                 }
-            },
-            "Path": "/",
-            "Groups": [
-                "Students"
-            ],
-            "UserName": {
-                "Fn::FindInMap": [
-                    "UserConfig",
-                    "Login",
-                    "Name"
-                ]
             }
         }
     }
