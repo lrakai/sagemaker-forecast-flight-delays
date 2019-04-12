@@ -1,0 +1,311 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Cloud Academy Compliance check using AWS Config Rules (Managed & Custom)",
+    "Parameters": {
+        "Region": {
+            "Type": "String",
+            "Default": "us-west-2"
+        }
+    },
+    "Mappings": {
+        "UserConfig": {
+            "Login": {
+                "Name": "student",
+                "Pass": "password"
+            }
+        }
+    },
+    "Resources": {
+        "LabData": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "AccessControl": "PublicRead"
+            }
+        },
+        "S3Copy": {
+            "Type": "Custom::CopyToS3",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "CopyFilesToS3",
+                        "Arn"
+                    ]
+                },
+                "S3BucketName": {
+                    "Ref": "LabData"
+                },
+                "Urls": [
+                    "https://raw.githubusercontent.com/lrakai/aws-ml-regression/master/data/Flights_Dec2016-Nov2017_sampled.zip",
+                    "https://raw.githubusercontent.com/lrakai/aws-ml-regression/master/data/Flights_Dec2016-Nov2017_sampled.csv.schema"
+                ]
+            }
+        },
+        "CopyFilesToS3": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Handler": "index.lambda_handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "",
+                                "import os",
+                                "import urllib.request",
+                                "from urllib.parse import urlparse",
+                                "import json",
+                                "import zipfile",
+                                "import boto3",
+                                "import cfnresponse",
+                                "",
+                                "print('Loading function')",
+                                "",
+                                "s3 = boto3.resource('s3')",
+                                "",
+                                "",
+                                "def save_to_local(url):",
+                                "    urlPath = urlparse(url).path",
+                                "    fileName = os.path.basename(urlPath)",
+                                "    filePath = '/tmp/' + fileName",
+                                "    urllib.request.urlretrieve(url, filePath)",
+                                "    if os.path.splitext(filePath)[1] == '.zip':",
+                                "        with zipfile.ZipFile(filePath, 'r') as zip_ref:",
+                                "            zip_ref.extractall('/tmp/')",
+                                "        filePath = filePath.replace('.zip', '.csv')",
+                                "    return filePath",
+                                "",
+                                "",
+                                "def upload_to_s3(filePath, bucket):",
+                                "    fileName = os.path.basename(filePath)",
+                                "    s3.Object(bucket, fileName).put(Body=open(filePath, 'rb'))",
+                                "",
+                                "",
+                                "def copy_to_s3(url, bucket):",
+                                "    filePath = save_to_local(url)",
+                                "    upload_to_s3(filePath, bucket)",
+                                "",
+                                "",
+                                "def lambda_handler(event, context):",
+                                "    print('Received event: ' + json.dumps(event, indent=2))",
+                                "",
+                                "    if event['RequestType'] == 'Create':",
+                                "        # get the properties set in the CloudFormation resource",
+                                "        properties = event['ResourceProperties']",
+                                "        urls = properties['Urls']",
+                                "        bucket = properties['S3BucketName']",
+                                "",
+                                "        try:",
+                                "            for url in urls:",
+                                "                copy_to_s3(url, bucket)",
+                                "",
+                                "        except Exception as e:",
+                                "            print(e)",
+                                "            cfnresponse.send(event, context, cfnresponse.FAILED, {",
+                                "                             'Response': 'Failure'})",
+                                "            return",
+                                "",
+                                "    cfnresponse.send(event, context, cfnresponse.SUCCESS,",
+                                "                     {'Response': 'Success'})"
+                            ]
+                        ]
+                    }
+                },
+                "Runtime": "python3.6",
+                "Timeout": 120
+            }
+        },
+        "LambdaExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:*"
+                                    ],
+                                    "Resource": "arn:aws:logs:*:*:*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "SageMakerRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "sagemaker.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "sagemaker",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "cloudwatch:PutMetricData",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents",
+                                        "logs:CreateLogGroup",
+                                        "logs:DescribeLogStreams",
+                                        "s3:GetObject",
+                                        "s3:PutObject",
+                                        "s3:ListBucket",
+                                        "ecr:GetAuthorizationToken",
+                                        "ecr:BatchCheckLayerAvailability",
+                                        "ecr:GetDownloadUrlForLayer",
+                                        "ecr:BatchGetImage"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "RoleName": "sagemaker-role"
+            }
+        },
+        "Group": {
+            "Type": "AWS::IAM::Group",
+            "Properties": {
+                "GroupName": "Students",
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "students-policy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "sagemaker:CreateModel",
+                                        "sagemaker:DescribeModel",
+                                        "sagemaker:DeleteModel"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Sid": "VpcConfigurationForCreateForms",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ec2:DescribeVpcs",
+                                        "ec2:DescribeSubnets",
+                                        "ec2:DescribeSecurityGroups"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Sid": "ListAndCreateExecutionRoles",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:ListRoles",
+                                        "iam:CreateRole",
+                                        "iam:CreateRole",
+                                        "iam:CreatePolicy"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Sid": "KmsKeysForCreateForms",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "kms:DescribeKey",
+                                        "kms:ListAliases"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:PassRole"
+                                    ],
+                                    "Resource": "arn:aws:iam::*:role/sagemaker-role",
+                                    "Condition": {
+                                        "StringEquals": {
+                                            "iam:PassedToService": "sagemaker.amazonaws.com"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "User": {
+        "Type": "AWS::IAM::User",
+        "DependsOn": "Group",
+        "Properties": {
+            "LoginProfile": {
+                "Password": {
+                    "Fn::FindInMap": [
+                        "UserConfig",
+                        "Login",
+                        "Pass"
+                    ]
+                }
+            },
+            "Path": "/",
+            "Groups": [
+                "Students"
+            ],
+            "UserName": {
+                "Fn::FindInMap": [
+                    "UserConfig",
+                    "Login",
+                    "Name"
+                ]
+            }
+        }
+    }
+}
