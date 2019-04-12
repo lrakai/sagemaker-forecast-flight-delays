@@ -228,8 +228,20 @@
                                     "Effect": "Allow",
                                     "Action": [
                                         "sagemaker:CreateModel",
-                                        "sagemaker:DescribeModel",
-                                        "sagemaker:DeleteModel"
+                                        "sagemaker:Describe*",
+                                        "sagemaker:DeleteModel",
+                                        "sagemaker:Get*",
+                                        "sagemaker:Search",
+                                        "sagemaker:DeleteTags",
+                                        "sagemaker:StopTrainingJob",
+                                        "sagemaker:AddTags",
+                                        "sagemaker:CreateTrainingJob",
+                                        "s3:Get*",
+                                        "s3:List*",
+                                        "s3:PutObjectAcl",
+                                        "s3:PutBucketAcl",
+                                        "s3:PutBucketPolicy",
+                                        "cloudwatch:ListMetrics"
                                     ],
                                     "Resource": "*"
                                 },
@@ -244,13 +256,10 @@
                                     "Resource": "*"
                                 },
                                 {
-                                    "Sid": "ListAndCreateExecutionRoles",
+                                    "Sid": "ListRoles",
                                     "Effect": "Allow",
                                     "Action": [
-                                        "iam:ListRoles",
-                                        "iam:CreateRole",
-                                        "iam:CreateRole",
-                                        "iam:CreatePolicy"
+                                        "iam:ListRoles"
                                     ],
                                     "Resource": "*"
                                 },
