@@ -9,7 +9,8 @@ function merge {
     fi
     echo "Merging $1 $2"
     paste  --delimiters=, $1 $2 > $1.merge
-    sed -i 's/\r//g' $1.merge
+    # remove carriage returns and header row (required for SageMaker CSV)
+    sed -i 's/\r//g;1d' $1.merge
     mv $1.merge $1
     rm -f $2
 }
