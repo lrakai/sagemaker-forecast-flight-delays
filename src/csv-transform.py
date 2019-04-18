@@ -20,6 +20,12 @@ def onehot_encode(df, dtypes):
 def write_csv(df, csv_path, transform_name):
     out_path = "{0}_{1}.csv".format(
         os.path.splitext(csv_path)[0], transform_name)
+    columns = df.columns.tolist()
+    if "ARR_DELAY" in columns:
+        # place target in first column for SageMaker
+        columns.remove("ARR_DELAY")
+        columns.insert(0, "ARR_DELAY")
+    df = df[columns]
     df.to_csv(path_or_buf=out_path, index=False)
     return
 
