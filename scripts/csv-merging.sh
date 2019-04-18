@@ -8,7 +8,7 @@ function merge {
         return 1
     fi
     echo "Merging $1 $2"
-    paste  --delimiters=LIST $1 $2 > $1.merge
+    paste  --delimiters=, $1 $2 > $1.merge
     sed -i 's/\r//g' $1.merge
     mv $1.merge $1
     rm -f $2
