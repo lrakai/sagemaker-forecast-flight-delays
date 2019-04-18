@@ -117,6 +117,7 @@ def naive():
     numrows = 1114751 - 1  # minus 1 for header
     training_ratio = 0.7
 
+## Better to process all at once and split at the end (if memory wasn't a concern)
     data_config = {
         "train": {
             "skiprows": range(math.floor(training_ratio * numrows) + 1, numrows + 2),
