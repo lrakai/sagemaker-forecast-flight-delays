@@ -34,9 +34,10 @@
                 "S3BucketName": {
                     "Ref": "LabData"
                 },
-                "Urls": [
-                    "https://raw.githubusercontent.com/lrakai/aws-ml-regression/master/data/Flights_Dec2016-Nov2017_sampled.zip",
-                    "https://raw.githubusercontent.com/lrakai/aws-ml-regression/master/data/Flights_Dec2016-Nov2017_sampled.csv.schema"
+                "SourceBucket": "clouda-labs-assets",
+                "Objects": [
+                    "sagemaker/flight_data/Flights_test.csv",
+                    "sagemaker/flight_data/Flights_training.csv"
                 ]
             }
         },
@@ -55,12 +56,8 @@
                         "Fn::Join": [
                             "\n",
                             [
-                                "",
                                 "import os",
-                                "import urllib.request",
-                                "from urllib.parse import urlparse",
                                 "import json",
-                                "import zipfile",
                                 "import boto3",
                                 "import cfnresponse",
                                 "",
@@ -69,26 +66,11 @@
                                 "s3 = boto3.resource('s3')",
                                 "",
                                 "",
-                                "def save_to_local(url):",
-                                "    urlPath = urlparse(url).path",
-                                "    fileName = os.path.basename(urlPath)",
-                                "    filePath = '/tmp/' + fileName",
-                                "    urllib.request.urlretrieve(url, filePath)",
-                                "    if os.path.splitext(filePath)[1] == '.zip':",
-                                "        with zipfile.ZipFile(filePath, 'r') as zip_ref:",
-                                "            zip_ref.extractall('/tmp/')",
-                                "        filePath = filePath.replace('.zip', '.csv')",
-                                "    return filePath",
-                                "",
-                                "",
-                                "def upload_to_s3(filePath, bucket):",
-                                "    fileName = os.path.basename(filePath)",
-                                "    s3.Object(bucket, fileName).put(Body=open(filePath, 'rb'))",
-                                "",
-                                "",
-                                "def copy_to_s3(url, bucket):",
-                                "    filePath = save_to_local(url)",
-                                "    upload_to_s3(filePath, bucket)",
+                                "def copy_to_s3(key, source_bucket, bucket):",
+                                "    copy_source = { 'Bucket': source_bucket, 'Key': key }",
+                                "    dest_bucket = s3.Bucket(bucket)",
+                                "    dest_object = dest_bucket.Object(os.path.basename(key))",
+                                "    dest_object.copy(copy_source)",
                                 "",
                                 "",
                                 "def lambda_handler(event, context):",
@@ -97,12 +79,13 @@
                                 "    if event['RequestType'] == 'Create':",
                                 "        # get the properties set in the CloudFormation resource",
                                 "        properties = event['ResourceProperties']",
-                                "        urls = properties['Urls']",
+                                "        objects = properties['Objects']",
                                 "        bucket = properties['S3BucketName']",
+                                "        source_bucket = properties['SourceBucket']",
                                 "",
                                 "        try:",
-                                "            for url in urls:",
-                                "                copy_to_s3(url, bucket)",
+                                "            for key in objects:",
+                                "                copy_to_s3(key, source_bucket, bucket)",
                                 "",
                                 "        except Exception as e:",
                                 "            print(e)",
@@ -110,8 +93,7 @@
                                 "                             'Response': 'Failure'})",
                                 "            return",
                                 "",
-                                "    cfnresponse.send(event, context, cfnresponse.SUCCESS,",
-                                "                     {'Response': 'Success'})"
+                                "    cfnresponse.send(event, context, cfnresponse.SUCCESS, {'Response': 'Success'})"
                             ]
                         ]
                     }
@@ -156,6 +138,7 @@
                                 {
                                     "Effect": "Allow",
                                     "Action": [
+                                        "s3:GetObject",
                                         "s3:PutObject"
                                     ],
                                     "Resource": "*"
@@ -242,7 +225,13 @@
                                         "s3:PutObjectAcl",
                                         "s3:PutBucketAcl",
                                         "s3:PutBucketPolicy",
-                                        "cloudwatch:ListMetrics"
+                                        "cloudwatch:List*",
+                                        "cloudwatch:Describe*",
+                                        "cloudwatch:Get*",
+                                        "logs:List*",
+                                        "logs:Describe*",
+                                        "logs:Get*",
+                                        "logs:Filter*"
                                     ],
                                     "Resource": "*"
                                 },
