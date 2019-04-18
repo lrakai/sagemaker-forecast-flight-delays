@@ -14,5 +14,5 @@ function merge {
     rm -f $2
 }
 
-merge $data_path/Flights_small_training.csv $data_path/Flights_small_training_dest.csv
-merge $data_path/Flights_small_test.csv $data_path/Flights_small_test_dest.csv
+merge $data_path/Flights_training.csv $data_path/Flights_training_dest.csv
+merge $data_path/Flights_test.csv $data_path/Flights_test_dest.csv
