@@ -65,7 +65,7 @@ def memory_efficient():
         "DISTANCE_GROUP": "category"
     }
     numrows = 1114751 - 1  # minus 1 for header
-    training_ratio = 0.7
+    training_ratio = 0.8
 
     data_config = {
         "train": {
@@ -115,7 +115,7 @@ def naive():
         "DISTANCE_GROUP": "category"
     }
     numrows = 1114751 - 1  # minus 1 for header
-    training_ratio = 0.7
+    training_ratio = 0.8
 
 ## Better to process all at once and split at the end (if memory wasn't a concern)
     data_config = {
