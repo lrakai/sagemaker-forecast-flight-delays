@@ -207,8 +207,9 @@
         },
         "Cloud9Env": {
             "Type": "AWS::Cloud9::EnvironmentEC2",
+            "DependsOn": "User",
             "Properties": {
-                "Description": "Gauntlt Dev Environment",
+                "Description": "Test Machine",
                 "AutomaticStopTimeMinutes": 60,
                 "InstanceType": "t2.micro",
                 "OwnerArn": {
@@ -223,7 +224,7 @@
                         ]
                     ]
                 },
-                "Name": "Gauntlt",
+                "Name": "Test",
                 "SubnetId": {
                     "Ref": "DevSubnet"
                 }
