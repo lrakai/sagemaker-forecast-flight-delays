@@ -8,6 +8,15 @@
         }
     },
     "Mappings": {
+        "SubnetConfig": {
+            "VPC": {
+                "CIDR": "10.0.0.0/20"
+            },
+            "DevSubnet": {
+                "CIDR": "10.0.0.0/24",
+                "AZ": "us-west-2a"
+            }
+        },
         "UserConfig": {
             "Login": {
                 "Name": "student",
@@ -196,6 +205,165 @@
                 "RoleName": "sagemaker-role"
             }
         },
+        "Cloud9Env": {
+            "Type": "AWS::Cloud9::EnvironmentEC2",
+            "Properties": {
+                "Description": "Gauntlt Dev Environment",
+                "AutomaticStopTimeMinutes": 60,
+                "InstanceType": "t2.micro",
+                "OwnerArn": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "arn:aws:iam::",
+                            {
+                                "Ref": "AWS::AccountId"
+                            },
+                            ":user/student"
+                        ]
+                    ]
+                },
+                "Name": "Gauntlt",
+                "SubnetId": {
+                    "Ref": "DevSubnet"
+                }
+            }
+        },
+        "DevVpc": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": {
+                    "Fn::FindInMap": [
+                        "SubnetConfig",
+                        "VPC",
+                        "CIDR"
+                    ]
+                },
+                "EnableDnsSupport": true,
+                "EnableDnsHostnames": true,
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Dev Vpc"
+                    },
+                    {
+                        "Key": "Environment",
+                        "Value": "Dev"
+                    }
+                ]
+            }
+        },
+        "DevSubnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "DevVpc"
+                },
+                "MapPublicIpOnLaunch": true,
+                "AvailabilityZone": {
+                    "Fn::FindInMap": [
+                        "SubnetConfig",
+                        "DevSubnet",
+                        "AZ"
+                    ]
+                },
+                "CidrBlock": {
+                    "Fn::FindInMap": [
+                        "SubnetConfig",
+                        "DevSubnet",
+                        "CIDR"
+                    ]
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Dev Subnet"
+                    },
+                    {
+                        "Key": "Environment",
+                        "Value": "Dev"
+                    }
+                ]
+            }
+        },
+        "DevInternetGatewayAttach": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "DevVpc"
+                },
+                "InternetGatewayId": {
+                    "Ref": "DevInternetGateway"
+                }
+            }
+        },
+        "DevPublicRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "DevVpc"
+                }
+            }
+        },
+        "DevPublicRoute": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "DevPublicRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "DevInternetGateway"
+                }
+            }
+        },
+        "DevSubnetRouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "DevSubnet"
+                },
+                "RouteTableId": {
+                    "Ref": "DevPublicRouteTable"
+                }
+            }
+        },
+        "DevInternetGateway": {
+            "Type": "AWS::EC2::InternetGateway"
+        },
+        "DevSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Allow incoming http and ssh traffic",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "80",
+                        "ToPort": "80",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "443",
+                        "ToPort": "443",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "DevVpc"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Dev Servers"
+                    },
+                    {
+                        "Key": "Environment",
+                        "Value": "Dev"
+                    }
+                ]
+            }
+        },
         "Group": {
             "Type": "AWS::IAM::Group",
             "Properties": {
@@ -234,9 +402,45 @@
                                         "logs:List*",
                                         "logs:Describe*",
                                         "logs:Get*",
-                                        "logs:Filter*"
+                                        "logs:Filter*",
+                                        "cloud9:DescribeEnvironments",
+                                        "cloud9:ListEnvironments",
+                                        "cloud9:GetUserPublicKey",
+                                        "cloud9:GetUserSettings",
+                                        "cloud9:GetEnvironmentConfig",
+                                        "cloud9:UpdateUserSettings",
+                                        "cloud9:ValidateEnvironmentName",
+                                        "ec2:DescribeSubnets",
+                                        "ec2:DescribeVpcs",
+                                        "iam:GetUser",
+                                        "iam:ListUsers"
                                     ],
                                     "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "cloud9:DescribeEnvironmentMemberships"
+                                    ],
+                                    "Resource": "*",
+                                    "Condition": {
+                                        "Null": {
+                                            "cloud9:UserArn": "true",
+                                            "cloud9:EnvironmentId": "true"
+                                        }
+                                    }
+                                },
+                                {
+                                    "Action": [
+                                        "ec2:Describe*"
+                                    ],
+                                    "Resource": "*",
+                                    "Effect": "Allow",
+                                    "Condition": {
+                                        "StringEquals": {
+                                            "ec2:Region": "us-west-2"
+                                        }
+                                    }
                                 },
                                 {
                                     "Sid": "VpcConfigurationForCreateForms",
