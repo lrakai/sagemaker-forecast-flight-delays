@@ -392,6 +392,7 @@
                                         "sagemaker:CreateEndpointConfig",
                                         "sagemaker:CreateEndpoint",
                                         "sagemaker:DeleteEndpoint",
+                                        "sagemaker:InvokeEndpoint",
                                         "s3:Get*",
                                         "s3:List*",
                                         "s3:PutObjectAcl",
